@@ -1,4 +1,4 @@
-package org.wiizerdofwiierd.util.argparser;
+package xyz.rybicki.util.jargparser;
 
 import java.util.*;
 import java.util.regex.Matcher;
