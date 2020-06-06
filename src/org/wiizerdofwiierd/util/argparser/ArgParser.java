@@ -1,6 +1,8 @@
 package org.wiizerdofwiierd.util.argparser;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class ArgParser {
@@ -8,7 +10,7 @@ public class ArgParser {
 	private final TreeMap<String, Argument> validArgs = new TreeMap<>();
 
 	/**
-	 * Parses an array of Strings, grouping together words in quotation marks.<br>
+	 * Parses a String, returning an array of each token while preserving elements within quotation marks as a single token<br>
 	 * Incomplete quotations are parsed literally. For example, the arguments<br>
 	 * <pre>
 	 *     one" "two" "three
@@ -57,85 +59,26 @@ public class ArgParser {
 	 *         <td>[one]</td>
 	 *     </tr>
 	 * </table>
-	 * @param args Arguments to parse
-	 * @return A new array containing the parsed arguments
+	 * @param input Input to parse
+	 * @return An array containing the parsed arguments
 	 */
-	public static String[] parseQuotes(String[] args){
-		int length = 0;
-		int quoted = 0;
-		boolean counting = true;
-		for(String s : args){
-			if(s.startsWith("\"") && !s.endsWith("\"")){//Has begin quote
-				length++;
-				if(!counting){//If not currently counting each word (already had begin quote)
-					length += quoted;
-					quoted = 0;
-				}
-				counting = false;
-			}
-			else if(s.endsWith("\"") && !s.startsWith("\"")){//Has end quote
-				if(counting) length++;
-				quoted = 0;
-				counting = true;
-			}
-			else if(counting) length++;//Has no quotes, not in quotes
-			else quoted++;//Has no quotes, in quotes
+	public static String[] parseQuotedArguments(String input){
+		List<String> arguments = new ArrayList<>();
+
+		Matcher matcher = Pattern
+				.compile("(?:\"([^\"]+)\" ?|(\\S+))? ?+")
+				.matcher(input);
+
+		// TODO: Document this
+		while(matcher.find()){
+			if(matcher.group(1) != null)
+				arguments.add(matcher.group(1));
+
+			if(matcher.group(2) != null)
+				arguments.add(matcher.group(2));
 		}
-		if(!counting) length += quoted;
 
-		String[] newArgs = new String[length];
-
-		StringBuilder builder = new StringBuilder();
-		int index = 0;
-		int words = 0;
-		boolean quotes = false;
-		for(String s : args){
-			if(s.startsWith("\"") && !s.endsWith("\"")){//Has begin quote
-				if(quotes){
-					if(builder.length() > 0){
-						newArgs[index] = builder.toString();
-						builder.setLength(0);
-						index++;
-					}
-				}
-
-				builder.append(s);
-				words++;
-
-				quotes = true;
-			}
-			else if(s.endsWith("\"") && !s.startsWith("\"")){//Has end quote
-				if(words > 0){
-					builder.append(" ");
-				}
-				builder.append(s);
-				if(words > 0){
-					String arg = builder.toString();
-					newArgs[index] = arg.substring(1, arg.length()).substring(0, arg.length() - 2);//Remove begin and end quote
-				}
-				else newArgs[index] = builder.toString();
-
-				builder.setLength(0);
-				index++;
-				words = 0;
-
-				quotes = false;
-			}
-			else if(quotes){//In quotes
-				builder.append(" ").append(s);
-			}
-			else{
-				newArgs[index] = s;
-				index++;
-			}
-		}
-		if(quotes)
-			for(String s : builder.toString().split(" ")){
-				newArgs[index] = s;
-				index++;
-			}
-
-		return newArgs;
+		return arguments.toArray(new String[0]);
 	}
 	
 	/**
@@ -188,13 +131,13 @@ public class ArgParser {
 	public ArgParser withArgument(String name, Argument argument){
 		return withArgument(name, validArgs.size(), argument, false);
 	}
-
+	
 	/**
 	 * Parses an array of arguments, calling {@link Argument#handle(Object)} on each in order of priority
-	 * @param args Arguments to parse
+	 * @param input Entire input used to parse arguments for
 	 */
-	public void parse(String[] args){
-		Iterator<String> iterator = Arrays.stream(parseQuotes(args)).iterator();
+	public void parse(String input){
+		Iterator<String> iterator = Arrays.stream(parseQuotedArguments(input)).iterator();
 
 		HashMap<Argument, Object> values = new HashMap<>();
 
@@ -226,6 +169,14 @@ public class ArgParser {
 		for(Argument a : values.keySet().stream().sorted().collect(Collectors.toList())){//Sort based on priority and iterate
 			a.handle(values.get(a));
 		}
+	}
+	
+	/**
+	 * Parses an array of arguments, calling {@link Argument#handle(Object)} on each in order of priority
+	 * @param args Arguments to parse
+	 */
+	public void parse(String[] args){
+		parse(String.join(" ", args));
 	}
 	
 	/**
