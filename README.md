@@ -84,13 +84,11 @@ class RequiredArgumentExample{
     }
 }
 ```
-If this argument is not provided, you will receive the following output:
+If this argument is not provided, the application will exit, and you will receive the following output:
 ```
 Error when parsing arguments: One or more required arguments are missing:
 Missing: -message
 ```
-*Note: This does not call `System.exit()`. The application will continue running even if required arguments are missing*
-
 ## Flags
 You can also specify a **Flag**, which instead of having a value, simply executes something when it is present:
 ```java
